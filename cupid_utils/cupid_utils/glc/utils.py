@@ -7,7 +7,7 @@ import xarray as xr
 from matplotlib import pyplot as plt
 
 
-def read_cesm_smb(path, case_name, last_year, climo_nyears, params):
+def read_cesm_smb(path, case_name, isx, last_year, climo_nyears, params):
     """
     This function reads CESM coupler history files and returns
     an xarray DataArray containing surface mass balance in units mm/y
@@ -22,7 +22,8 @@ def read_cesm_smb(path, case_name, last_year, climo_nyears, params):
 
         year_to_read = last_year - k
         filename = (
-            f"{path}/{case_name}.cpl.hx.1yr2glc.{year_to_read:04d}-01-01-00000.nc"
+            #f"{path}/{case_name}.cpl.hx.1yr2glc.{year_to_read:04d}-01-01-00000.nc"
+            f"{path}/{case_name}.cpl.hx.exp2glc.{year_to_read:04d}-01-01-00000.nc"
         )
 
         if not os.path.isfile(filename):
@@ -36,9 +37,21 @@ def read_cesm_smb(path, case_name, last_year, climo_nyears, params):
 
         filenames.append(filename)
 
-    climo_out = (
-        xr.open_mfdataset(filenames)["glc1Exp_Flgl_qice"].compute() * smb_convert
-    )
+    # When AIS is present, AIS is on position 1 GrIS is on position 2
+    if isx == 'AIS':
+        climo_out = (
+            xr.open_mfdataset(filenames)["glc1Exp_Flgl_qice"].compute() * smb_convert
+        )
+    elif isx == 'GrIS':
+        climo_out = (
+            xr.open_mfdataset(filenames)["glc2Exp_Flgl_qice"].compute() * smb_convert
+        )
+    else:
+        print(
+            f"Ice sheet {idx} not known"
+        )
+        
+        
     # Mask out data that is 0 in initial condition
     for k in range(len(climo_out["time"])):
         climo_out.data[k, :, :] = np.where(
